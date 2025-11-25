@@ -1,25 +1,23 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = [
-#     "rich",
-# ]
 # ///
 
 
 __app_name__ = "West of Loathing Save Editor"
 __author__ = "AbsoluteWinter"
 __license__ = "GPL-3.0"
-__version__ = "0.1.0"
-__version_build__ = "20251125"
-
+__version__ = "0.3.0"
+__version_build__ = "20251126"
 
 # MARK: Library
 # ------------------------------------------------------------------------------------------------------------------------------------
 import json
 import os
+import tkinter as tk
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from tkinter import filedialog, ttk
 from typing import ClassVar, Literal, TypedDict, cast
 
 # MARK: Setup
@@ -385,8 +383,147 @@ class WoLSE:
         self._unlock_all_skills_and_perks(max_level=True, class_resticted=False)
 
 
+# MARK: GUI
+# ------------------------------------------------------------------------------------------------------------------------------------
+class SaveEditorGUI:
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.root.title(f"{__app_name__} by {__author__}")
+        self.root.geometry("500x400")
+
+        self._create_variables()
+        self.create_widgets()
+
+    # Variables
+    # ------------------------------------
+    def _create_variables(self) -> None:
+        self.folder_var = tk.StringVar(value=DEFAULT_PATH.resolve())
+        self.slot_var = tk.StringVar()
+        self.input1_var = tk.StringVar()
+        self.input2_var = tk.StringVar()
+        self.cb1_var = tk.BooleanVar()
+        self.cb2_var = tk.BooleanVar()
+
+        self.save_engine = None
+
+    # Main UI
+    # ------------------------------------
+    def create_widgets(self):
+
+        # Folder Group
+        folder_group = ttk.LabelFrame(self.root, text="Save Folder Selection")
+        folder_group.pack(fill="x", padx=10, pady=8)
+
+        ttk.Label(folder_group, text="Folder:").grid(
+            row=0, column=0, padx=5, pady=5, sticky="w"
+        )
+        ttk.Entry(folder_group, textvariable=self.folder_var, width=40).grid(
+            row=0, column=1, padx=5, pady=5
+        )
+        ttk.Button(folder_group, text="Browse", command=self.browse_folder).grid(
+            row=0, column=2, padx=5
+        )
+        ttk.Button(folder_group, text="Load", command=self.load_folder).grid(
+            row=0, column=3, padx=5
+        )
+
+        # Slot Group
+        slot_group = ttk.LabelFrame(self.root, text="Save Slot")
+        slot_group.pack(fill="x", padx=10, pady=8)
+
+        ttk.Label(slot_group, text="Slot:").grid(
+            row=0, column=0, padx=5, pady=5, sticky="w"
+        )
+        self.slot_dropdown = ttk.Combobox(
+            slot_group, textvariable=self.slot_var, values=[""], width=40
+        )
+        self.slot_dropdown.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(slot_group, text="Select", command=self.select_slot).grid(
+            row=0, column=2, padx=5
+        )
+
+        # Inputs Group
+        input_group = ttk.LabelFrame(self.root, text="XP & Meat")
+        input_group.pack(fill="x", padx=10, pady=8)
+
+        ttk.Label(input_group, text="XP:").grid(
+            row=0, column=0, padx=5, pady=5, sticky="e"
+        )
+        ttk.Entry(input_group, textvariable=self.input1_var, width=25).grid(
+            row=0, column=1, padx=5, pady=5
+        )
+
+        ttk.Label(input_group, text="Meat:").grid(
+            row=1, column=0, padx=5, pady=5, sticky="e"
+        )
+        ttk.Entry(input_group, textvariable=self.input2_var, width=25).grid(
+            row=1, column=1, padx=5, pady=5
+        )
+
+        # Checkbox Group
+        cb_group = ttk.LabelFrame(self.root, text="Skill & Perk")
+        cb_group.pack(fill="x", padx=10, pady=8)
+
+        ttk.Checkbutton(cb_group, text="Unlock all skills", variable=self.cb1_var).grid(
+            row=0, column=0, padx=5, pady=5, sticky="w"
+        )
+        ttk.Checkbutton(cb_group, text="Unlock all perks", variable=self.cb2_var).grid(
+            row=1, column=0, padx=5, pady=5, sticky="w"
+        )
+
+        # Save Button
+        ttk.Button(self.root, text="Save", command=self.save_action).pack(pady=12)
+
+    # Button Actions
+    # ------------------------------------
+    def browse_folder(self):
+        path = filedialog.askdirectory()
+        if path:
+            self.folder_var.set(path)
+
+    def load_folder(self):
+        print("Load folder:", self.folder_var.get())
+
+        self.save_engine = WoLSE(self.folder_var.get())
+        ss = [
+            f"{i} - {x.name}"
+            for i, x in enumerate(self.save_engine.available_saves, start=1)
+        ]
+        self.slot_dropdown.config(values=ss)
+
+    def select_slot(self):
+        print("Selected slot:", self.slot_var.get())
+        num = int(self.slot_var.get().split(" - ")[0])
+        print(num)
+        self.save_engine.select_save(num - 1)
+
+        info = self.save_engine._read_info()
+        self.input1_var.set(info["xp"])
+        self.input2_var.set(info["meat"])
+
+    def save_action(self):
+        print("--- Saving Data ---")
+        print("Folder:", self.folder_var.get())
+        print("Slot:", self.slot_var.get())
+        print("XP:", self.input1_var.get())
+        print("Meat:", self.input2_var.get())
+        print("Unlock all skills:", self.cb1_var.get())
+        print("Unlock all perks:", self.cb2_var.get())
+
+        unlock_sk = self.cb1_var.get()
+        unlock_p = self.cb2_var.get()
+
+        if unlock_sk:
+            self.save_engine.unlock_all_class_skills()
+        if unlock_p:
+            self.save_engine.unlock_all_perks()
+        self.save_engine.save()
+
+
 # MARK: Run
 # ------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
 
-    pass
+    root = tk.Tk()
+    app = SaveEditorGUI(root)
+    root.mainloop()
