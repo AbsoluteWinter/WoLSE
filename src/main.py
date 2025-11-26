@@ -6,11 +6,12 @@
 __app_name__ = "West of Loathing Save Editor"
 __author__ = "AbsoluteWinter"
 __license__ = "GPL-3.0"
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 __version_build__ = "20251126"
 
 # TODO
 # - Unlock all setting
+# - Unlock all elvibrato language
 
 
 # MARK: Library
@@ -147,6 +148,75 @@ SKILLS_AND_PERKS: list[tuple] = [
     ("book_tanner", 1, 0, True),
 ]
 
+ELV_WORDS = """\
+TOILET,DESTINATION,INCREASE,SOLAR,OFFLINE,MUNICIPAL,INSUFFICIENT,DECLOAKER,SEDATIVE,INITIALIZE,CONTAINMENT,ORIENTATION,BEACON,REACTOR,
+DRONE,TIMESQUEEZER,TEMPERATURE,FACILITY,SECONDARY,PIPELINE,ADJUSTMENT,EQUIPMENT,MACHINE,INSERT,RETURN,CACHE,REFRESHMENT,SOURCE,DETECTED,
+UPDATED,TOGGLE,MILITARY,FLUID,WEST,BROOCH,ARRAY,LOCAL,CANNON,SOUTH,WEATHER,SELECT,CLOTHING,HEADWEAR,CENTRAL,BRACELET,CONSTRUCTION,
+SUSTENANCE,POSITRONIC,RESONATOR,QUICKGATE,PERSONNEL,ANTIPSYCHOTIC,EMERGENCY,EXTRATERRESTRIAL,TELEPORTER,CHRONOKEY,FABRICATION,CORRUPTION,
+PLANETARY,ROBERTO,TERMINAL,MAGNITUDE,GARBAGE,ORGANIC,MAINTENANCE,STORAGE,LEGSWEAR,PRIMARY,DESTRUCTION,EAST,AUDITORY,BRIDGE,FOOTWEAR,
+COFFEEMAKER,ONLINE,DISPOSAL,NORTH,MATTER,EDUCATION,CURRENT,NUISANCE,DECREASE,SYSTEM,POWER
+"""
+
+CONFIG: dict[str, str] = {
+    "option_stupidwalking": "1",
+    "option_sepiatone": "1",
+    "collect_hat_hat_barelyenchanted": "1",
+    "tutskip": "1",
+    "tutskip_maxmeat": "1337",
+    "tutskip_turnip": "1",
+    "tutskip_board": "1",
+    "tutskip_deputypistol": "1",
+    "tutskip_nastyring": "1",
+    "tutskip_shovel": "1",
+    "tutskip_crowbar": "1",
+    "tutskip_skinningknife": "1",
+    "tutskip_cavalrysaber": "1",
+    "tutskip_sherfbadge": "1",
+    "tutskip_silvercufflinks": "1",
+    "tutskip_pocketwatch": "1",
+    "tutskip_honorable": "1",
+    "tutskip_ruthless": "1",
+    "tutskip_goblintongue": "1",
+    "tutskip_quest_curly": "1",
+    "tutskip_susie": "1",
+    "tutskip_alice": "1",
+    "tutskip_gary": "1",
+    "tutskip_darkhorse": "1",
+    "tutskip_palehorse": "1",
+    "tutskip_crazyhorse": "1",
+    "tutskip_hardmode": "1",
+    "tutskip_maxneedles": "3",
+    "bonebridge": "1",
+    "collect_hat_quest_billhelmet": "1",
+    "collect_hat_hat_sloppychef": "1",
+    "collect_hat_hat_fakepope": "1",
+    "collect_hat_hat_cavalry": "1",
+    "collect_hat_hat_oldmilitary": "1",
+    "collect_hat_hat_hippy": "1",
+    "collect_hat_hat_gasmask": "1",
+    "collect_hat_hat_prototype": "1",
+    "collect_hat_hat_silverturnip": "1",
+    "collect_hat_hat_crackerjack": "1",
+    "collect_hat_hat_elvheadband": "1",
+    "collect_hat_hat_ghosthat": "1",
+    "collect_hat_hat_chef": "1",
+    "collect_hat_hat_kurtzfit": "1",
+    "collect_hat_hat_viking": "1",
+    "collect_hat_hat_blackhood": "1",
+    "collect_hat_hat_robertomask": "1",
+    "collect_hat_hat_robertoleader": "1",
+    "collect_hat_hat_elv": "1",
+    "collect_hat_hat_necrocrown": "1",
+    "collect_hat_hat_mining": "1",
+    "collect_hat_hat_yeasty": "1",
+    "collect_hat_hat_spittoon": "1",
+    "collect_hat_hat_burning": "1",
+    "collect_hat_hat_electric": "1",
+    "collect_hat_hat_hexrock": "1",
+    "collect_hat_hat_4gallon": "1",
+    "collect_hat_hat_floppyderby": "1",
+    "collect_hat_hat_hard": "1",
+}
 
 # MARK: Data format
 # ------------------------------------------------------------------------------------------------------------------------------------
@@ -196,7 +266,9 @@ class WoLSE:
     ------
     >>> engine = WoLSE(<path to save folder>)
     >>> engine.select_save(<save slot>)
+    >>> engine.unlock_all_config()
     >>> engine.unlock_all_skill_perk()
+    >>> engine.unlock_el_vibrato_words()
     >>> engine.save()
     """
 
@@ -233,6 +305,7 @@ class WoLSE:
 
         # Post
         self._save_data: SaveData = {}
+        self._config_data: dict[str, str] = {}
         self._selected_save = None
 
     def __repr__(self) -> str:
@@ -249,6 +322,7 @@ class WoLSE:
             return f"{cname}({self._selected_save})"
 
     # Load
+    # ------------------------------------
     @property
     def available_saves(self) -> list[Path]:
         """Available save files"""
@@ -273,7 +347,7 @@ class WoLSE:
         """
         keys = ["firstname", "lastname", "class", "xp", "meat"]
         fl = self._save_data["PLAYER"]["flags"]
-        info = {v: fl[v] for v in keys}
+        info = {v: fl.get(v, "0") for v in keys}
         return info
 
     def select_save(self, save_number: int) -> None:
@@ -283,12 +357,42 @@ class WoLSE:
         self._load_save_data(slot=save_number)
 
     # Save
+    # ------------------------------------
     def save(self) -> None:
         save_data = json.dumps(self._save_data, indent=2)
         with self._selected_save.open("w", encoding="utf-8") as f:
             f.write(save_data)
 
+    # Config data
+    # ------------------------------------
+    def unlock_all_config(self) -> None:
+        """
+        Unlock all game perma flag/config
+        - Stupid walking option
+        - Nostalgia option
+        - Pardner option: Pete, Susie, Alice, Gary
+        - Hard mode option
+        - Honorable, Ruthless
+        - All prologue unlockable items
+        - All horses
+        - 1337 Meat
+        """
+        if not self.status == StatusCode.OK:
+            return None
+
+        path = list(self.source_path.glob("*permaflags-*.json"))[0]
+        with path.open("r", encoding="utf-8") as file:
+            self._config_data = json.load(file)
+
+        for k, v in CONFIG.items():
+            if k not in self._config_data:
+                self._config_data[k] = v
+
+        with path.open("w", encoding="utf-8") as file:
+            file.write(json.dumps(self._config_data, indent=2))
+
     # Skills and perks
+    # ------------------------------------
     def _unlock_sp(self, skill: Skill, max_level: bool = False) -> None:
         """
         Unlock a skill or perk
@@ -387,6 +491,7 @@ class WoLSE:
         self._unlock_all_skills_and_perks(max_level=True, class_resticted=False)
 
     # Stat
+    # ------------------------------------
     def set_xp(self, value: int) -> None:
         if isinstance(value, int):
             value = str(value)
@@ -397,11 +502,29 @@ class WoLSE:
             value = str(value)
         self._save_data["PLAYER"]["flags"]["meat"] = value
 
+    # Word
+    # ------------------------------------
+    def unlock_el_vibrato_words(self) -> None:
+        """
+        Unlock all El Vibrato words (normally unlocked by using punchcard)
+        """
+        words = [x.strip() for x in ELV_WORDS.split(",")]
+        base = "word_elvibrato_"
+
+        for x in words:
+            key = f"{base}{x}"
+            if not key in self._save_data["PLAYER"]["flags"]:
+                self._save_data["PLAYER"]["flags"][key] = "1"
+
 
 # MARK: GUI
 # ------------------------------------------------------------------------------------------------------------------------------------
 class SaveEditorGUI:
-    def __init__(self, root: tk.Tk):
+    """
+    West of Loathing Save Editor - GUI
+    """
+
+    def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title(f"{__app_name__} by {__author__}")
         self.root.geometry("500x400")
@@ -423,7 +546,7 @@ class SaveEditorGUI:
 
     # Main UI
     # ------------------------------------
-    def create_widgets(self):
+    def create_widgets(self) -> None:
 
         # Folder Group
         folder_group = ttk.LabelFrame(self.root, text="Save Folder Selection")
@@ -491,12 +614,12 @@ class SaveEditorGUI:
 
     # Button Actions
     # ------------------------------------
-    def browse_folder(self):
+    def browse_folder(self) -> None:
         path = filedialog.askdirectory()
         if path:
             self.folder_var.set(path)
 
-    def load_folder(self):
+    def load_folder(self) -> None:
         print("Load folder:", self.folder_var.get())
 
         self.save_engine = WoLSE(self.folder_var.get())
@@ -506,17 +629,17 @@ class SaveEditorGUI:
         ]
         self.slot_dropdown.config(values=ss)
 
-    def select_slot(self):
+    def select_slot(self) -> None:
         print("Selected slot:", self.slot_var.get())
         num = int(self.slot_var.get().split(" - ")[0])
         print(num)
         self.save_engine.select_save(num - 1)
 
         info = self.save_engine._read_info()
-        self.input1_var.set(info["xp"])
-        self.input2_var.set(info["meat"])
+        self.input1_var.set(info.get("xp", "0"))
+        self.input2_var.set(info.get("meat", "0"))
 
-    def save_action(self):
+    def save_action(self) -> None:
         print("--- Saving Data ---")
         print("Folder:", self.folder_var.get())
         print("Slot:", self.slot_var.get())
