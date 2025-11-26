@@ -6,8 +6,12 @@
 __app_name__ = "West of Loathing Save Editor"
 __author__ = "AbsoluteWinter"
 __license__ = "GPL-3.0"
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __version_build__ = "20251126"
+
+# TODO
+# - Unlock all setting
+
 
 # MARK: Library
 # ------------------------------------------------------------------------------------------------------------------------------------
@@ -382,6 +386,17 @@ class WoLSE:
         """
         self._unlock_all_skills_and_perks(max_level=True, class_resticted=False)
 
+    # Stat
+    def set_xp(self, value: int) -> None:
+        if isinstance(value, int):
+            value = str(value)
+        self._save_data["PLAYER"]["flags"]["xp"] = value
+
+    def set_meat(self, value: int) -> None:
+        if isinstance(value, int):
+            value = str(value)
+        self._save_data["PLAYER"]["flags"]["meat"] = value
+
 
 # MARK: GUI
 # ------------------------------------------------------------------------------------------------------------------------------------
@@ -486,7 +501,7 @@ class SaveEditorGUI:
 
         self.save_engine = WoLSE(self.folder_var.get())
         ss = [
-            f"{i} - {x.name}"
+            f"{i} - {x.stem}"
             for i, x in enumerate(self.save_engine.available_saves, start=1)
         ]
         self.slot_dropdown.config(values=ss)
@@ -509,6 +524,9 @@ class SaveEditorGUI:
         print("Meat:", self.input2_var.get())
         print("Unlock all skills:", self.cb1_var.get())
         print("Unlock all perks:", self.cb2_var.get())
+
+        self.save_engine.set_xp(self.input1_var.get())
+        self.save_engine.set_meat(self.input2_var.get())
 
         unlock_sk = self.cb1_var.get()
         unlock_p = self.cb2_var.get()
